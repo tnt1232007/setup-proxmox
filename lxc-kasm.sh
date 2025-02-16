@@ -1,6 +1,6 @@
 #!/bin/bash
-# bash new-lxc-kasm.sh 101 64:16:7f:2c:af:71 1.16.1
-# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/new-lxc-kasm.sh | bash -s -- 101
+# bash lxc-kasm.sh 101 64:16:7f:2c:af:71 1.16.1
+# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/lxc-kasm.sh | bash -s -- 101
 set -euo pipefail
 
 # Host Configuration

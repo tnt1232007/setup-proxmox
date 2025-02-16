@@ -1,6 +1,6 @@
 #!/bin/bash
-# bash new-vm-macos.sh 501 64:16:7f:7a:ca:bb 15 sequoia
-# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/new-vm-macos.sh | bash -s -- 501
+# bash vm-macos.sh 501 64:16:7f:7a:ca:bb 15 sequoia
+# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/vm-macos.sh | bash -s -- 501
 set -euo pipefail
 
 # Host Configuration
