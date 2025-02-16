@@ -1,6 +1,6 @@
 #!/bin/bash
 # bash new-vm-windows.sh 601 02:a1:21:71:c8:0b 11 sun-valley
-# wget -qLO - https://gist.trinitro.io/tnt1232007/proxmox/raw/HEAD/new-vm-windows.sh | bash -s -- 601
+# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/new-vm-windows.sh | bash -s -- 601
 set -euo pipefail
 
 # Host Configuration

@@ -1,6 +1,6 @@
 #!/bin/bash
 # bash new-vm-linux.sh -i 401 -o debian -c 4 -r 4096 -d 40G -m bc:24:11:01:54:6e
-# wget -qLO - https://gist.trinitro.io/tnt1232007/proxmox-vm-linux/raw/HEAD/new-vm-linux.sh | bash -s -- -i 701 -o ubuntu
+# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/new-vm-linux.sh | bash -s -- -i 701 -o ubuntu
 set -euo pipefail
 
 # Check Host Configurations
