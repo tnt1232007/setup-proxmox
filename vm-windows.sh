@@ -1,84 +1,64 @@
 #!/bin/bash
-# bash vm-windows.sh 601 02:a1:21:71:c8:0b 11 sun-valley
-# wget -qLO - https://gist.trinitro.io/tnt1232007/setup-proxmox/raw/HEAD/vm-windows.sh | bash -s -- 601
 set -euo pipefail
 
-# Host Configuration
-HOST_VM_STORAGE="local-lvm"
-HOST_ISO_STORAGE="nas-synology-external"
-HOST_ISO_MOUNT="/mnt/pve/nas-synology-external/template/iso/"
-if ! pvesm status | grep -q "^$HOST_VM_STORAGE"; then
-    echo -e "\e[31mError: Storage '$HOST_VM_STORAGE' not found\e[0m"
-    exit 1
-fi
-if ! pvesm status | grep -q "^$HOST_ISO_STORAGE"; then
-    echo -e "\e[31mError: Storage '$HOST_ISO_STORAGE' not found\e[0m"
-    exit 1
-fi
+source "$(dirname "$0")/common.sh"
+print_help "$(basename "$0")" "$@"
+parse_input "$@"
+configure_host_storage
+configure_vm_settings
+configure_os_settings
+configure_network_settings
+review_configurations
+check_dry_run
 
-# VM Info - INPUT PARAMETERS
-VM_ID="${1:-601}"
-VM_MAC="${2:-02:a1:21:71:c8:0b}"
-if qm status $VM_ID &>/dev/null; then
-    echo -e "\e[31mError: VM ID $VM_ID already exists\e[0m"
-    exit 1
-fi
+download_vm_image() {
+    echo "🔧 Checking if OS image exists..."
+    cd $MOUNT_STORAGE/template/iso/
+    VM_IMAGE="$OS_NAME-$OS_VERSION.iso"
+    if ! test -f $VM_IMAGE; then
+        echo "⬇️ Downloading from $OS_IMAGE_LINK..."
+        wget $OS_IMAGE_LINK -O $VM_IMAGE
+    fi
 
-# OS Configuration - INPUT PARAMETERS
-OS_MAJOR="${3:-11}"
-OS_MINOR="${4:-24H2}"
-OS_BUILD="${5:-26100.1742}"
+    echo "🔧 Checking if Support image exists..."
+    local VM_SUPPORT_IMAGE_INFO="$(curl --silent -m 10 --connect-timeout 5 "https://api.github.com/repos/qemus/virtiso/releases/latest" | grep virtio-win | grep "\.iso")"
+    VM_SUPPORT_IMAGE=$(echo "$VM_SUPPORT_IMAGE_INFO" | grep "name" | cut -d'"' -f4)
+    if ! test -f $VM_SUPPORT_IMAGE; then
+        VM_SUPPORT_IMAGE_LINK=$(echo "$VM_SUPPORT_IMAGE_INFO" | grep "browser_download_url" | cut -d'"' -f4)
+        echo "⬇️ Downloading from $VM_SUPPORT_IMAGE_LINK..."
+        wget $VM_SUPPORT_IMAGE_LINK
+    fi
+}
 
-# VM Configuration
-VM_NAME="win$OS_MAJOR-$OS_MINOR-$OS_BUILD"
-VM_OS_TYPE="win$OS_MAJOR"
-VM_CORES="8"
-VM_SOCKET="1"
-VM_MEM="16384"
-VM_DISK_SIZE="128G"
+create_vm() {
+    echo "🔧 Creating VM..."
+    VM_NAME="$OS_NAME-$OS_VERSION"
+    if [[ "$OS_VERSION" =~ ^(XP|Vista)$ ]]; then
+        OS_TYPE="w$OS_VERSION"
+    else
+        OS_TYPE="win$OS_VERSION"
+    fi
+    qm create $VM_ID --name $VM_NAME \
+        --ostype $OS_TYPE --ide2 "$HOST_ISO_STORAGE:iso/$VM_IMAGE,media=cdrom" \
+        --vga std --scsihw virtio-scsi-single --machine q35 --agent 1 \
+        --bios ovmf --efidisk0 $HOST_VM_STORAGE:0,pre-enrolled-keys=1 \
+        --cpu host --cores $VM_CORES \
+        --memory $VM_MEM \
+        --net0 $VM_NET \
+        --tablet 1
+}
 
-# Download Windows ISO
-cd $HOST_ISO_MOUNT
-VM_IMAGE="Win${OS_MAJOR}_${OS_MINOR}_English_x64.iso"
-VM_VIRTIO_IMAGE="virtio-win.iso"
-if ! test -f $VM_IMAGE; then
-    echo -e "\e[32mDownloading Windows $OS_MAJOR $OS_MINOR $OS_BUILD...\e[0m"
+setup_disk_image() {
+    echo "🔧 Setting up disk image..."
+    pvesm alloc $HOST_VM_STORAGE $VM_ID vm-$VM_ID-disk-1 $VM_DISK
+    qm set $VM_ID --scsi0 $HOST_VM_STORAGE:vm-$VM_ID-disk-1,cache=writeback,discard=on,ssd=1
+    qm set $VM_ID --ide0 "$HOST_ISO_STORAGE:iso/$VM_SUPPORT_IMAGE,media=cdrom"
+    qm set $VM_ID --boot order='scsi0;ide2;ide0'
+    pvesm alloc $HOST_VM_STORAGE $VM_ID vm-$VM_ID-disk-2 4M # TPM disk
+    qm set $VM_ID --tpmstate0 $HOST_VM_STORAGE:vm-$VM_ID-disk-2,size=4M,version=v2.0
+}
 
-    wget https://archive.org/download/Win${OS_MAJOR}v${OS_MINOR}x64/$VM_IMAGE -O $VM_IMAGE
-
-# TODO: https://stackoverflow.com/questions/3074288/get-final-url-after-curl-is-redirected
-    wget https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/$VM_VIRTIO_IMAGE -O $VM_VIRTIO_IMAGE
-fi
-
-# Create and add main disk using VirtIO Block
-echo -e "\e[32mCreating disks with size $VM_DISK_SIZE...\e[0m"
-pvesm alloc $HOST_VM_STORAGE $VM_ID vm-$VM_ID-disk-0 4M # EFI disk
-pvesm alloc $HOST_VM_STORAGE $VM_ID vm-$VM_ID-disk-1 $VM_DISK_SIZE
-pvesm alloc $HOST_VM_STORAGE $VM_ID vm-$VM_ID-disk-2 4M # TPM disk
-
-# Create VM
-echo -e "\e[32mCreating VM with ID $VM_ID...\e[0m"
-qm create $VM_ID --name $VM_NAME \
-    --ostype $VM_OS_TYPE --ide2 $HOST_ISO_STORAGE:iso/$VM_IMAGE,media=cdrom \
-    --vga type=std --scsihw lsi --machine q35 --agent 1 \
-    --bios ovmf --efidisk0 $HOST_VM_STORAGE:vm-$VM_ID-disk-0,size=4M,efitype=4m,pre-enrolled-keys=1 \
-    --scsi0 $HOST_VM_STORAGE:vm-$VM_ID-disk-1,cache=writeback,discard=on,ssd=1 \
-    --cpu cputype=host --sockets $VM_SOCKET --cores $VM_CORES \
-    --memory $VM_MEM \
-    --net0 virtio,bridge=vmbr0,macaddr=${VM_MAC} \
-    --ide0 $HOST_ISO_STORAGE:iso/$VM_VIRTIO_IMAGE,media=cdrom \
-    --boot order='scsi0;ide2;ide0' \
-    --tpmstate0 $HOST_VM_STORAGE:vm-$VM_ID-disk-2,size=4M,version=v2.0 \
-    --tablet 1
-
-# Echo VM details
-echo -e "\e[32mVM \e[33m$VM_ID \e[32mcreated successfully:\e[0m"
-echo -e "\e[32m - Name: \e[33m$VM_NAME\e[0m"
-echo -e "\e[32m - MAC Address: \e[33m$VM_MAC\e[0m"
-echo -e "\e[32m - Cores: \e[33m$VM_CORES\e[0m"
-echo -e "\e[32m - Sockets: \e[33m$VM_SOCKET\e[0m"
-echo -e "\e[32m - Memory: \e[33m$(($VM_MEM / 1024))G\e[0m"
-echo -e "\e[32m - Disk Size: \e[33m$VM_DISK_SIZE\e[0m"
-echo -e "\e[32mTo start the VM:"
-echo -e "\e[32m - \e[33mqm start $VM_ID"
-echo -e "\e[0m"
+download_vm_image
+create_vm
+setup_disk_image
+print_success_message
