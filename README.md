@@ -2,18 +2,17 @@
 
 This repository contains scripts to automate the setup of virtual machines on Proxmox. Each script is designed for a specific operating system.
 
-## Scripts
 
-### vm-linux.sh
+## Linux - `vm-linux.sh`
 
-This script sets up a Linux virtual machine.
+This script sets up a Linux (Debian/Ubuntu) virtual machine.
 
-#### USAGE
+### USAGE
 ```bash
 bash vm-linux.sh <ID> [OPTIONS]
 ```
 
-#### OPTIONS
+### OPTIONS
 - `<ID>`: The unique ID of the VM (required).
 - `--os <os_name>`: The name of the operating system (required, debian/ubuntu).
 - `--ver <os_version>`: The version of the operating system (optional, default=latest).
@@ -23,21 +22,21 @@ bash vm-linux.sh <ID> [OPTIONS]
 - `--mac <address>`: MAC address for the VM network interface (optional, default=random).
 - `--dry`: Perform a dry run without making any changes (optional).
 
-#### EXAMPLE
+### EXAMPLE
 ```bash
 bash vm-linux.sh 999 --os ubuntu --ver 22.04 --core 4 --ram 4096 --disk 40G --mac 52:54:00:12:34:56 --dry
 ```
 
-### vm-windows.sh
+## Windows - `vm-windows.sh`
 
 This script sets up a Windows virtual machine.
 
-#### USAGE
+### USAGE
 ```bash
 bash vm-windows.sh <ID> [OPTIONS]
 ```
 
-#### OPTIONS
+### OPTIONS
 - `<ID>`: The unique ID of the VM (required).
 - `--ver <os_version>`: The version of the operating system (optional, default=11).
 - `--core <cores>`: Number of CPU cores for the VM (optional, default=8).
@@ -46,21 +45,21 @@ bash vm-windows.sh <ID> [OPTIONS]
 - `--mac <address>`: MAC address for the VM network interface (optional, default=random).
 - `--dry`: Perform a dry run without making any changes (optional).
 
-#### EXAMPLE
+### EXAMPLE
 ```bash
 bash vm-windows.sh 999 --ver 10 --core 4 --ram 4096 --disk 40G --mac 52:54:00:12:34:56 --dry
 ```
 
-### vm-macos.sh
+## MacOS - `vm-macos.sh`
 
 This script sets up a macOS virtual machine.
 
-#### USAGE
+### USAGE
 ```bash
 bash vm-macos.sh <ID> [OPTIONS]
 ```
 
-#### OPTIONS
+### OPTIONS
 - `<ID>`: The unique ID of the VM (required).
 - `--ver <os_version>`: The version of the operating system (optional, default=15).
 - `--core <cores>`: Number of CPU cores for the VM (optional, default=8).
@@ -69,7 +68,7 @@ bash vm-macos.sh <ID> [OPTIONS]
 - `--mac <address>`: MAC address for the VM network interface (optional, default=random).
 - `--dry`: Perform a dry run without making any changes (optional).
 
-#### EXAMPLE
+### EXAMPLE
 ```bash
 bash vm-macos.sh 999 --ver 14 --core 4 --ram 4096 --disk 40G --mac 52:54:00:12:34:56 --dry
 ```
