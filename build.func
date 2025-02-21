@@ -32,7 +32,6 @@ highlight() {
 }
 
 print_help() {
-    SCRIPT_NAME="$1"
     shift
     for arg in "$@"; do
         if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
@@ -279,7 +278,7 @@ print_success_message() {
 create_lxc() {
     echo "🔧 Creating LXC..."
     pct create $VM_ID $HOST_ISO_STORAGE:vztmpl/$LXC_TEMPLATE_NAME \
-        --hostname "$(basename "$0" .sh)" \
+        --hostname "$(basename "$SCRIPT_NAME" .sh)" \
         --unprivileged 1 \
         --ssh-public-keys $USER_SSH_TMP_FILE \
         --rootfs $HOST_VM_STORAGE:$VM_DISK \

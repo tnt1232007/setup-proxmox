@@ -2,12 +2,13 @@
 set -euo pipefail
 
 export IS_LXC=1
+export SCRIPT_NAME="$(basename "$0")"
 if [[ -f "$(dirname "$0")/build.func" ]]; then
     source "$(dirname "$0")/build.func"
 else
     source <(wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/build.func)
 fi
-print_help "$(basename "$0")" "$@"
+print_help "$@"
 parse_input "$@"
 configure_host_storage
 configure_hardware_settings
