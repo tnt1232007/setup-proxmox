@@ -1,11 +1,3 @@
-#!/bin/bash
-# bash template.sh
-
-# Define VM configurations (ID, Name, Disk Size, Cores, Memory, MAC, IP)
-# vm-system: adguard-home adguard-home-sync cloudflared dozzle mariadb n8n ntfy portainer postgres redis seaweed-fs tailscale traefik vault-warden wud
-# vm-home: docker-proxy home-assistant mosquitto node-red own-tracks traefik-proxy
-# vm-media: audio-book-shelf docker-proxy javinizer jdownloader jellyfin kavita kometa komf metube photoprism plex-auto-languages suwayomi traefik-proxy
-# vm-misc: browserless docker-proxy excalidraw firefly flaresolverr fresh-rss hemmelig homepage hoppscotch ics-proxy it-tools kutt lazytainer linkding open-gist open-webui pairdrop paperless-ngx photo-pea rallly reactive-resume reubah slink speedtest-tracker stirling-pdf surmai traefik-proxy wallos
 # 08 GB RAM = 8192
 # 12 GB RAM = 12288
 # 16 GB RAM = 16384

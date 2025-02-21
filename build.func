@@ -1,0 +1,297 @@
+#!/bin/bash
+set -euo pipefail
+
+NOOP=0
+IS_LXC=${IS_LXC:-0}
+OS_NAME=""
+OS_VERSION=""
+OS_DISTRO=""
+VM_ID=""
+VM_MAC=""
+if [[ $IS_LXC != 1 ]]; then
+    SCRIPT_TYPE="VM"
+    VM_CORES=8
+    VM_MEM=8192
+    VM_DISK="80"
+else
+    SCRIPT_TYPE="LXC"
+    VM_CORES=4
+    VM_MEM=4096
+    VM_DISK="40"
+fi
+
+error() {
+    echo "❌ Error: $1" >&2
+    if [[ $NOOP != 1 ]]; then
+        exit 1
+    fi
+}
+
+highlight() {
+    echo -e "\033[0;33m$1\033[0m"
+}
+
+print_help() {
+    SCRIPT_NAME="$1"
+    shift
+    for arg in "$@"; do
+        if [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+            echo "👉 USAGE: bash $SCRIPT_NAME <ID> [OPTIONS]"
+            echo ""
+            echo "  Create a new virtual machine or container in proxmox."
+            echo ""
+            echo "  <ID>                 (required)"
+            echo "      The unique ID of the $SCRIPT_TYPE."
+            echo ""
+            OS_OPTION=""
+            if [[ "$SCRIPT_NAME" == "vm-linux.sh" || "$SCRIPT_NAME" == lxc-* ]]; then
+                echo "  --os <os_name>       (required, alpine/debian/ubuntu)"
+                echo "      The name of the operating system."
+                echo ""
+                OS_OPTION=" --os debian"
+            fi
+            echo "  --ver <os_version>   (optional, default=latest)"
+            echo "      The version of the operating system."
+            echo ""
+            echo "  --core <cores>       (optional, default=$VM_CORES)"
+            echo "      Number of CPU cores for the $SCRIPT_TYPE."
+            echo ""
+            echo "  --ram <memory>       (optional, default=$VM_MEM)"
+            echo "      Amount of RAM for the $SCRIPT_TYPE in MB."
+            echo ""
+            echo "  --disk <size>        (optional, default=$VM_DISK)"
+            echo "      Disk size for the $SCRIPT_TYPE."
+            echo ""
+            echo "  --mac <address>      (optional, default=random)"
+            echo "      MAC address for the $SCRIPT_TYPE network interface."
+            echo ""
+            echo "  --noop               (optional)"
+            echo "      Perform a noop run without making any changes."
+            echo ""
+            echo "👉 EXAMPLE: bash $SCRIPT_NAME 999$OS_OPTION --ver xx --core 4 --ram 4096 --disk 40G --mac xx:xx:xx:xx:xx:xx --noop"
+            echo "👉 EXAMPLE: wget -qLO - https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/$SCRIPT_NAME | bash -s -- 999$OS_OPTION"
+            exit 0
+        fi
+    done
+}
+
+parse_input() {
+    echo "🔧 Parsing input configurations..."
+    if [[ -z "${1:-}" ]]; then
+        error "<ID> is required"
+    elif [[ ! "$1" =~ ^[0-9]+$ ]]; then
+        error "<ID> is invalid"
+    fi
+    VM_ID=$1
+    shift
+
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+            --os) OS_NAME="$2"; shift 2 ;;
+            --ver) OS_VERSION="$2"; shift 2 ;;
+            --core) VM_CORES="$2"; shift 2 ;;
+            --ram) VM_MEM="$2"; shift 2 ;;
+            --disk) VM_DISK="$2"; shift 2 ;;
+            --mac) VM_MAC="$2"; shift 2 ;;
+            --noop) NOOP=1; shift ;;
+            *) error "Invalid option ${1:-}" ;;
+        esac
+    done
+}
+
+check_noop() {
+    if [[ $NOOP == 1 ]]; then
+        echo "✅ Operation cancelled by --noop."
+        exit 1
+    fi
+}
+
+configure_host_storage() {
+    echo "🔧 Configuring host storage..."
+    HOST_VM_STORAGE="local-lvm"
+    HOST_ISO_STORAGE="nas-synology-external"
+    MOUNT_STORAGE="/mnt/pve/$HOST_ISO_STORAGE"
+    if ! pvesm status | grep -q "^$HOST_VM_STORAGE"; then
+        error "Storage '$HOST_VM_STORAGE' not found"
+    fi
+    if ! pvesm status | grep -q "^$HOST_ISO_STORAGE"; then
+        error "Storage '$HOST_ISO_STORAGE' not found"
+    fi
+    if ! test -d "$MOUNT_STORAGE"; then
+        error "Storage '$MOUNT_STORAGE' not mounted"
+    fi
+}
+
+configure_hardware_settings() {
+    echo "🔧 Configuring hardware settings..."
+    if [[ $IS_LXC != 1 ]]; then
+        if qm status $VM_ID &> /dev/null; then
+            error "ID $VM_ID already exists"
+        fi
+    else
+        if pct status $VM_ID &> /dev/null; then
+            error "ID $VM_ID already exists"
+        fi
+    fi
+
+    if [[ -n "$VM_CORES" && (! "$VM_CORES" =~ ^[0-9]+$ || "$VM_CORES" -lt 1 || "$VM_CORES" -gt 64) ]]; then
+        error "Invalid number of cores: $VM_CORES (must be between 1-64)"
+    fi
+
+    if [[ -n "$VM_MEM" && ! "$VM_MEM" =~ ^[0-9]+$ ]]; then
+        error "Invalid RAM size: $VM_MEM MB (must be number)"
+    fi
+
+    if [[ -n "$VM_DISK" && ! "$VM_DISK" =~ ^[0-9]+$ ]]; then
+        error "Invalid disk size: $VM_DISK (must be number)"
+    fi
+
+    if [[ -n "$VM_MAC" && ! "$VM_MAC" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
+        error "Invalid MAC address: $VM_MAC (must be format XX:XX:XX:XX:XX:XX)"
+    fi
+}
+
+configure_os_settings() {
+    echo "🔧 Configuring OS settings..."
+    if [[ "$OS_NAME" == "debian" ]]; then
+        OS_VERSION="${OS_VERSION:-12}"
+    elif [[ "$OS_NAME" == "ubuntu" ]]; then
+        OS_VERSION="${OS_VERSION:-24.10}"
+    elif [[ "$OS_NAME" == "alpine" ]]; then
+        OS_VERSION="${OS_VERSION:-3.21}"
+    fi
+
+    if [[ "$SCRIPT_NAME" == "vm-linux.sh" && "$OS_NAME" == "debian" ]]; then
+        case "$OS_VERSION" in
+            14) OS_DISTRO="forky" ;;
+            13) OS_DISTRO="trixie" ;;
+            12) OS_DISTRO="bookworm" ;;
+            11) OS_DISTRO="bullseye" ;;
+            10) OS_DISTRO="buster" ;;
+            9) OS_DISTRO="stretch" ;;
+            8) OS_DISTRO="jessie" ;;
+            *) error "$OS_NAME $OS_VERSION not supported (must be betwen 8 - 14)" ;;
+        esac
+        OS_SOURCE="https://cloud.debian.org/images/cloud/$OS_DISTRO/latest/"
+        OS_IMAGE_LINK="${OS_SOURCE}debian-$OS_VERSION-genericcloud-amd64.qcow2"
+    elif [[ "$SCRIPT_NAME" == "vm-linux.sh" && "$OS_NAME" == "ubuntu" ]]; then
+        if [[ ! $version =~ ^[0-9]+\.[0-9]+$ ]]; then
+            error "$OS_NAME $OS_VERSION not supported (must be format XX.XX)"
+        fi
+        OS_SOURCE="https://cloud-images.ubuntu.com/releases/$OS_VERSION/release/"
+        OS_IMAGE_LINK="${OS_SOURCE}ubuntu-$OS_VERSION-server-cloudimg-amd64.img"
+    elif [[ "$SCRIPT_NAME" == "vm-linux.sh" && "$OS_NAME" == "alpine" ]]; then
+        if [[ ! $version =~ ^[0-9]+\.[0-9]+$ ]]; then
+            error "$OS_NAME $OS_VERSION not supported (must be format X.XX)"
+        fi
+        OS_SOURCE="https://dl-cdn.alpinelinux.org/alpine/v$OS_VERSION/releases/cloud/"
+        OS_IMAGE_LINK="$OS_SOURCE$(wget -qO- $OS_SOURCE | grep -Eo 'generic_alpine-[0-9]+\.[0-9]+\.[0-9]+-x86_64-uefi-cloudinit-r0\.qcow2' | sort -V | tail -n 1)"
+    elif [[ "$SCRIPT_NAME" == "vm-macos.sh" ]]; then
+        OS_NAME="macos"
+        OS_VERSION="${OS_VERSION:-14}"
+        case "$OS_VERSION" in
+            15) OS_DISTRO="sequoia" ;;
+            14) OS_DISTRO="sonoma" ;;
+            13) OS_DISTRO="ventura" ;;
+            12) OS_DISTRO="monterey" ;;
+            11) OS_DISTRO="big_sur" ;;
+            *)  error "$OS_NAME $OS_VERSION not supported (must be betwen 15 - 11)" ;;
+        esac
+        OS_IMAGE_LINK="https://archive.org/download/macOS-X-images/${OS_DISTRO^}%20$OS_VERSION.iso"
+    elif [[ "$SCRIPT_NAME" == "vm-windows.sh" ]]; then
+        OS_NAME="windows"
+        OS_VERSION="${OS_VERSION:-11}"
+        # Get from https://archive.org/search?query=creator%3A%22Microsoft%22&sort=-downloads
+        case "$OS_VERSION" in
+            11) OS_IMAGE_LINK="https://archive.org/download/win-11-english-x-64v-1_20220628/Win11_English_x64v1.iso" ;;
+            10) OS_IMAGE_LINK="https://archive.org/download/windows-10-22h2-x64-english/en-us_windows_10_22h2_updated_may_2023_x64_dvd_8ae93bf4.iso" ;;
+            8) OS_IMAGE_LINK="https://archive.org/download/win-8.1-english-x-64_20211019/Win8.1_English_x64.iso" ;;
+            7) OS_IMAGE_LINK="https://archive.org/download/win-7-pro-32-64-iso/64-bit/GSP1RMCPRXFRER_EN_DVD.ISO" ;;
+            VISTA) OS_IMAGE_LINK="https://archive.org/download/win-vista-ultimate-x64/Win%20Vista%20Ultimate%20x64.iso" ;;
+            XP) OS_IMAGE_LINK="https://archive.org/download/WinXPProSP3x86/en_windows_xp_professional_with_service_pack_3_x86_cd_vl_x14-73974.iso" ;;
+            *)  error "$OS_NAME $OS_VERSION not supported (must be 11, 10, 8, 7, VISTA, XP)" ;;
+        esac
+    elif [[ "$SCRIPT_NAME" == lxc-* && -n "$OS_NAME" ]]; then
+        pveam update > /dev/null
+        LXC_TEMPLATE_NAME=$(pveam available | grep "^system\s\+$OS_NAME-$OS_VERSION" | sort -V | tail -n 1 | awk '{print $2}')
+        if [[ ! -n "$LXC_TEMPLATE_NAME" ]]; then
+            error "No template found for $OS_NAME-$OS_VERSION"
+        fi
+    elif [[ -z "$OS_NAME" ]]; then
+        error "OS_NAME(--os) is required (alpine/debian/ubuntu)"
+    else
+        error "OS_NAME $OS_NAME not supported"
+    fi
+
+    if [[ -v OS_IMAGE_LINK && -n "$OS_IMAGE_LINK" ]] && ! curl --head --silent --fail "$OS_IMAGE_LINK" > /dev/null; then
+        error "Invalid download link for $OS_NAME-$OS_VERSION ($OS_IMAGE_LINK)"
+    fi
+}
+
+configure_network_settings() {
+    echo "🔧 Configuring network settings..."
+    if [[ $IS_LXC != 1 ]]; then
+        VM_NET="${1:-virtio},bridge=vmbr0"
+        if [[ -n "$VM_MAC" ]]; then
+            VM_NET="$VM_NET,macaddr=${VM_MAC}"
+        fi
+    else
+        VM_NET="name=eth0,bridge=vmbr0,ip=dhcp"
+        if [[ -n "$VM_MAC" ]]; then
+            VM_NET="$VM_NET,hwaddr=${VM_MAC}"
+        fi
+    fi
+}
+
+review_configurations() {
+    echo "🔧 Review the following configurations:"
+    echo "👉 OS Name: $(highlight "$OS_NAME")"
+    echo "👉 OS Version: $(highlight "$OS_VERSION")"
+    echo "👉 ID: $(highlight "$VM_ID")"
+    echo "👉 Cores: $(highlight "$VM_CORES")"
+    echo "👉 Memory: $(highlight "${VM_MEM}GB")"
+    echo "👉 Disk: $(highlight "${VM_DISK}G")"
+    echo "👉 Network: $(highlight "$VM_NET")"
+    read -p "❓ Do you want to proceed with these settings? (y/n): " confirm
+    if [[ "$confirm" != "y" ]]; then
+        echo "✅ Operation cancelled by user."
+        exit 1
+    fi
+}
+
+setup_ssh_keys() {
+    echo "🔧 Setting up SSH keys..."
+    USER_SSH_TMP_FILE=$(mktemp)
+    trap 'rm -f "$USER_SSH_TMP_FILE"' EXIT
+    find "$MOUNT_STORAGE/.ssh" -type f -name "*.pub" -exec cat {} + > "$USER_SSH_TMP_FILE"
+}
+
+print_success_message() {
+    echo "✅ $SCRIPT_TYPE $VM_ID created successfully:"
+    echo "👉 To start: $([[ $IS_LXC != 1 ]] && echo "qm" || echo "pct") start $VM_ID"
+    if [[ $IS_LXC == 1 ]]; then
+        echo "👉 More at: https://pve.proxmox.com/pve-docs/pct.1.html#_cli_usage_examples"
+    else
+        echo "👉 More at: https://pve.proxmox.com/pve-docs/qm.1.html#_cli_usage_examples"
+    fi
+}
+
+create_lxc() {
+    echo "🔧 Creating LXC..."
+    pct create $VM_ID $HOST_ISO_STORAGE:vztmpl/$LXC_TEMPLATE_NAME \
+        --hostname "$(basename "$0" .sh)" \
+        --unprivileged 1 \
+        --ssh-public-keys $USER_SSH_TMP_FILE \
+        --rootfs $HOST_VM_STORAGE:$VM_DISK \
+        --cores $VM_CORES \
+        --memory $VM_MEM \
+        --net0 $VM_NET
+}
+
+download_lxc_template() {
+    echo "🔧 Checking if LXC template exists..."
+    if ! pveam list "$HOST_ISO_STORAGE" | grep -q "$LXC_TEMPLATE_NAME"; then
+        echo "⬇️ Downloading $LXC_TEMPLATE_NAME..."
+        pveam download "$HOST_ISO_STORAGE" "$LXC_TEMPLATE_NAME"
+    fi
+}
