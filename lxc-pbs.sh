@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-export IS_LXC=1
-export SCRIPT_NAME="$(basename "$0")"
+export SCRIPT_TYPE="LXC"
+export SCRIPT_NAME="lxc-pbs.sh"
 if [[ -f "$(dirname "$0")/build.func" ]]; then
     source "$(dirname "$0")/build.func"
 else
@@ -11,7 +11,7 @@ fi
 print_help "$@"
 parse_input "$@"
 configure_host_storage
-configure_hardware_settings
+configure_vm_settings
 configure_os_settings
 configure_network_settings
 review_configurations

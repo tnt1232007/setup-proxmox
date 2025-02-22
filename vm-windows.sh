@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+export SCRIPT_NAME="vm-windows.sh"
 if [[ -f "$(dirname "$0")/build.func" ]]; then
     source "$(dirname "$0")/build.func"
 else
@@ -9,7 +10,7 @@ fi
 print_help "$(basename "$0")" "$@"
 parse_input "$@"
 configure_host_storage
-configure_hardware_settings
+configure_vm_settings
 configure_os_settings
 configure_network_settings
 review_configurations
@@ -37,7 +38,6 @@ download_vm_image() {
 
 create_vm() {
     echo "🔧 Creating VM..."
-    VM_NAME="vm-$OS_NAME-$OS_VERSION"
     if [[ "$OS_VERSION" =~ ^(XP|Vista)$ ]]; then
         OS_TYPE="w$OS_VERSION"
     else

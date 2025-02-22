@@ -2,19 +2,19 @@
 set -euo pipefail
 
 NOOP=0
-IS_LXC=${IS_LXC:-0}
+IS_LXC=0
 OS_NAME=""
 OS_VERSION=""
 OS_DISTRO=""
 VM_ID=""
 VM_MAC=""
-if [[ $IS_LXC != 1 ]]; then
-    SCRIPT_TYPE="VM"
+if [[ $SCRIPT_TYPE != "LXC" ]]; then
+    IS_LXC=0
     VM_CORES=8
     VM_MEM=8192
     VM_DISK="80"
 else
-    SCRIPT_TYPE="LXC"
+    IS_LXC=1
     VM_CORES=4
     VM_MEM=4096
     VM_DISK="40"
@@ -121,8 +121,8 @@ configure_host_storage() {
     fi
 }
 
-configure_hardware_settings() {
-    echo "🔧 Configuring hardware settings..."
+configure_vm_settings() {
+    echo "🔧 Configuring $SCRIPT_TYPE settings..."
     if [[ $IS_LXC != 1 ]]; then
         if qm status $VM_ID &> /dev/null; then
             error "ID $VM_ID already exists"
@@ -225,6 +225,12 @@ configure_os_settings() {
     if [[ -v OS_IMAGE_LINK && -n "$OS_IMAGE_LINK" ]] && ! curl --head --silent --fail "$OS_IMAGE_LINK" > /dev/null; then
         error "Invalid download link for $OS_NAME-$OS_VERSION ($OS_IMAGE_LINK)"
     fi
+
+    if [[ $IS_LXC != 1 ]]; then
+        VM_NAME="vm-$OS_NAME-$OS_VERSION"
+    else
+        VM_NAME="$(basename "$SCRIPT_NAME" .sh)"
+    fi
 }
 
 configure_network_settings() {
@@ -244,9 +250,9 @@ configure_network_settings() {
 
 review_configurations() {
     echo "🔧 Review the following configurations:"
-    echo "👉 OS Name: $(highlight "$OS_NAME")"
-    echo "👉 OS Version: $(highlight "$OS_VERSION")"
     echo "👉 ID: $(highlight "$VM_ID")"
+    echo "👉 Name: $(highlight "$VM_NAME")"
+    echo "👉 OS: $(highlight "$OS_NAME-$OS_VERSION")"
     echo "👉 Cores: $(highlight "$VM_CORES")"
     echo "👉 Memory: $(highlight "${VM_MEM}GB")"
     echo "👉 Disk: $(highlight "${VM_DISK}G")"
@@ -268,17 +274,17 @@ setup_ssh_keys() {
 print_success_message() {
     echo "✅ $SCRIPT_TYPE $VM_ID created successfully:"
     echo "👉 To start: $([[ $IS_LXC != 1 ]] && echo "qm" || echo "pct") start $VM_ID"
-    if [[ $IS_LXC == 1 ]]; then
-        echo "👉 More at: https://pve.proxmox.com/pve-docs/pct.1.html#_cli_usage_examples"
-    else
+    if [[ $IS_LXC != 1 ]]; then
         echo "👉 More at: https://pve.proxmox.com/pve-docs/qm.1.html#_cli_usage_examples"
+    else
+        echo "👉 More at: https://pve.proxmox.com/pve-docs/pct.1.html#_cli_usage_examples"
     fi
 }
 
 create_lxc() {
     echo "🔧 Creating LXC..."
     pct create $VM_ID $HOST_ISO_STORAGE:vztmpl/$LXC_TEMPLATE_NAME \
-        --hostname "$(basename "$SCRIPT_NAME" .sh)" \
+        --hostname $VM_NAME \
         --unprivileged 1 \
         --ssh-public-keys $USER_SSH_TMP_FILE \
         --rootfs $HOST_VM_STORAGE:$VM_DISK \

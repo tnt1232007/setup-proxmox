@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+export SCRIPT_NAME="vm-macos.sh"
 if [[ -f "$(dirname "$0")/build.func" ]]; then
     source "$(dirname "$0")/build.func"
 else
@@ -9,7 +10,7 @@ fi
 print_help "$(basename "$0")" "$@"
 parse_input "$@"
 configure_host_storage
-configure_hardware_settings
+configure_vm_settings
 configure_os_settings
 configure_network_settings "vmxnet3"
 review_configurations
@@ -39,7 +40,6 @@ download_vm_image() {
 
 create_vm() {
     echo "🔧 Creating VM..."
-    VM_NAME="vm-$OS_NAME-$OS_VERSION"
     qm create $VM_ID --name "$VM_NAME" \
         --ostype other --ide2 "$HOST_ISO_STORAGE:iso/$VM_SUPPORT_IMAGE,media=cdrom" \
         --vga vmware --scsihw virtio-scsi-single --machine q35 --agent 0 \

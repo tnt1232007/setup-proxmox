@@ -24,7 +24,7 @@ bash vm-linux.sh <ID> [OPTIONS]
 ### EXAMPLE
 ```bash
 bash vm-linux.sh 999 --os alpine --ver 3.21 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
-wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-linux.sh | bash -s -- vm-linux.sh 999 --os ubuntu
+wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-linux.sh | bash -s -- 999 --os ubuntu
 ```
 
 ## Windows - `vm-windows.sh`
@@ -48,7 +48,7 @@ bash vm-windows.sh <ID> [OPTIONS]
 ### EXAMPLE
 ```bash
 bash vm-windows.sh 999 --ver 11 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
-wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-windows.sh | bash -s -- vm-windows.sh 999
+wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-windows.sh | bash -s -- 999
 ```
 
 ## MacOS - `vm-macos.sh`
@@ -72,7 +72,7 @@ bash vm-macos.sh <ID> [OPTIONS]
 ### EXAMPLE
 ```bash
 bash vm-macos.sh 999 --ver 14 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
-wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-macos.sh | bash -s -- vm-macos.sh 999
+wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-macos.sh | bash -s -- 999
 ```
 
 ## LXCs - `lxc-pbs.sh` && `lxc-kasm.sh`
@@ -98,5 +98,5 @@ bash lxc-kasm.sh <ID> [OPTIONS]
 ### EXAMPLE
 ```bash
 bash lxc-pbs.sh 999 --os debian --ver 12 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
-wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/lxc-kasm.sh | bash -s -- lxc-kasm.sh 999 --os ubuntu
+wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/lxc-kasm.sh | bash -s -- 999 --os ubuntu
 ```

@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-export IS_LXC=1
+export SCRIPT_TYPE="LXC"
+export SCRIPT_NAME="lxc-kasm.sh"
 if [[ -f "$(dirname "$0")/build.func" ]]; then
     source "$(dirname "$0")/build.func"
 else
@@ -10,7 +11,7 @@ fi
 print_help "$(basename "$0")" "$@"
 parse_input "$@"
 configure_host_storage
-configure_hardware_settings
+configure_vm_settings
 configure_os_settings
 configure_network_settings
 review_configurations
@@ -18,7 +19,7 @@ check_noop
 
 setup_for_kasm() {
     echo "🔧 Setting up for kasm..."
-    pct set $VM_ID --features nesting=1
+    pct set $VM_ID --features fuse=1,nesting=1
     VM_CONFIG_FILE="/etc/pve/lxc/$VM_ID.conf"
     echo "lxc.cgroup.devices.allow: c 10:200 rwm" >> $VM_CONFIG_FILE
     echo "lxc.mount.entry: /dev/net dev/net none bind,create=dir" >> $VM_CONFIG_FILE
