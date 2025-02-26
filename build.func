@@ -121,6 +121,19 @@ configure_host_storage() {
     fi
 }
 
+generate_password() {
+    local length=12
+    local numbers='0123456789'
+    local specials='!@#$%^&*()-_=+'
+    local letters='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    VM_PW="$(tr -dc "$letters" < /dev/urandom | head -c $((length-4)))"
+    VM_PW+="$(tr -dc "$numbers" < /dev/urandom | head -c 2)"
+    VM_PW+="$(tr -dc "$specials" < /dev/urandom | head -c 2)"
+
+    VM_PW="$(echo "$VM_PW" | fold -w1 | shuf | tr -d '\n')"
+}
+
 configure_vm_settings() {
     echo "🔧 Configuring $SCRIPT_TYPE settings..."
     if [[ $IS_LXC != 1 ]]; then
@@ -249,15 +262,19 @@ configure_network_settings() {
 }
 
 review_configurations() {
+    generate_password
     echo "🔧 Review the following configurations:"
     echo "👉 ID: $(highlight "$VM_ID")"
     echo "👉 Name: $(highlight "$VM_NAME")"
+    if [[ "$SCRIPT_NAME" == "vm-linux.sh" || "$SCRIPT_NAME" == lxc-* ]]; then
+        echo "👉 Password: $(highlight "$VM_PW")"
+    fi
     echo "👉 OS: $(highlight "$OS_NAME-$OS_VERSION")"
     echo "👉 Cores: $(highlight "$VM_CORES")"
     echo "👉 Memory: $(highlight "${VM_MEM}GB")"
     echo "👉 Disk: $(highlight "${VM_DISK}G")"
     echo "👉 Network: $(highlight "$VM_NET")"
-    read -p "❓ Do you want to proceed with these settings? (y/n): " confirm
+    read -p "❓ Do you want to proceed with these settings? (y/n): " confirm </dev/tty
     if [[ "$confirm" != "y" ]]; then
         echo "✅ Operation cancelled by user."
         exit 1
@@ -284,8 +301,8 @@ print_success_message() {
 create_lxc() {
     echo "🔧 Creating LXC..."
     pct create $VM_ID $HOST_ISO_STORAGE:vztmpl/$LXC_TEMPLATE_NAME \
-        --hostname $VM_NAME \
-        --unprivileged 1 \
+        --hostname $VM_NAME --unprivileged 1 \
+        --password $VM_PW \
         --ssh-public-keys $USER_SSH_TMP_FILE \
         --rootfs $HOST_VM_STORAGE:$VM_DISK \
         --cores $VM_CORES \

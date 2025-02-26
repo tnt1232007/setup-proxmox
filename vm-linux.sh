@@ -53,6 +53,7 @@ setup_cloud_init() {
     qm set $VM_ID --sshkey "$USER_SSH_TMP_FILE"
     qm set $VM_ID --ipconfig0 ip=dhcp
     qm set $VM_ID --ciuser root
+    qm set $VM_ID --cipassword $VM_PW
     qm cloudinit update $VM_ID
     rm "$USER_SSH_TMP_FILE"
 }
