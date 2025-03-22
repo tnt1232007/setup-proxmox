@@ -9,24 +9,16 @@ declare -A VM_CONFIGS=(
     [404]="vm-misc 120G 8 12288 bc:24:11:d3:bc:6c 192.168.1.84"
 )
 
-# Create VMs
 VM_TEMPLATE_ID="400"
 for VM_ID in "${!VM_CONFIGS[@]}"; do
     IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
     echo "🚀 Creating VM: $NAME (ID: $VM_ID)"
-
-    # Clone the base VM
     qm clone $VM_TEMPLATE_ID $VM_ID --name "$NAME" --full true
-
-    # Resize disk
     qm resize $VM_ID scsi0 "$DISK"
 
-    # Set CPU and Memory
     qm set $VM_ID --cores "$CORES"
     qm set $VM_ID --memory "$MEMORY"
-
-    # Configure Network
     qm set $VM_ID --net0 virtio,bridge=vmbr0,macaddr="$MAC"
     qm set $VM_ID --ipconfig0 ip="$IP/24",gw=192.168.1.1
     qm set $VM_ID --onboot 1
@@ -34,7 +26,6 @@ for VM_ID in "${!VM_CONFIGS[@]}"; do
     echo "✅ $NAME ($VM_ID) created successfully!"
 done
 
-# Push SSH Key to VMs
 for VM_ID in "${!VM_CONFIGS[@]}"; do
     IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
