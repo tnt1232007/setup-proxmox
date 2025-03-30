@@ -59,6 +59,7 @@ for VM_ID in "${!VM_CONFIGS[@]}"; do
 done
 
 : <<'EOF'
+# Deleting all VMs
 for VM_ID in "${!VM_CONFIGS[@]}"; do
     IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
@@ -67,4 +68,15 @@ for VM_ID in "${!VM_CONFIGS[@]}"; do
     qm destroy $VM_ID
     echo "✅ $NAME ($VM_ID) destroyed successfully!"
 done
+EOF
+
+: <<'EOF'
+# For vm-home, change generic-cloud to generic for usb-ip drivers
+apt install linux-image-amd64
+update-grub
+grep menuentry /boot/grub/grub.cfg
+grub-set-default 'Debian GNU/Linux, with Linux 6.1.0-32-amd64'
+grub-editenv list
+reboot
+uname -r
 EOF
