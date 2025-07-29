@@ -2,6 +2,39 @@
 
 This repository contains scripts to automate the setup of virtual machines and LXC containers on Proxmox. Each script is designed for a specific operating system.
 
+## Linux Batch - `vm-linux-batch.sh`
+
+This interactive script allows you to batch create, configure, delete, and manage multiple Linux VMs from a template using a menu-driven interface.
+
+### USAGE
+```bash
+bash vm-linux-batch.sh
+```
+
+### FEATURES
+- **Create VMs:** Clone and set up all VMs from a template with predefined configurations.
+- **Configure VMs:** Start VMs, push SSH keys, and perform special configuration (e.g., kernel changes for specific VMs).
+- **Delete VMs:** Stop and destroy all managed VMs.
+- **Run Script:** Execute a custom or preset bash script in all VMs.
+- **VM List:** View live status, memory, disk, MAC, and IP for all managed VMs.
+
+### EXAMPLE
+```
+curl -fsSL https://url.trinitro.io/linux-batch-setup | bash
+
+======= Proxmox VM Batch Executor ========
+🚀 VM List:
+... (table of VMs) ...
+==========================================
+🤖 Choose an action:
+1) 🆕 Create VMs      - Clone and set up all VMs from template.
+2) 🛠️ Configure VMs   - Setup SSH key and configure special VMs.
+3) 🗑️ Delete VMs      - Stop and destroy all VMs.
+4) 📝 Run Script      - Run a custom bash command in all VMs.
+5) 🚪 Exit            - Quit this menu.
+===========================================
+```
+
 ## Linux - `vm-linux.sh`
 
 This script sets up a Linux (Alpine/Debian/Ubuntu) virtual machine.
