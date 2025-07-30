@@ -9,7 +9,7 @@ VM_TEMPLATE_ID="400"
 
 create() {
     echo "🚀 Creating VMs from template ID: $VM_TEMPLATE_ID"
-    for VM_ID in "${!VM_CONFIGS[@]}"; do
+    for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
         IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         echo "🚀 Creating VM: $NAME (ID: $VM_ID)"
@@ -28,7 +28,7 @@ create() {
 
 configure() {
     echo "🚀 Configuring VMs..."
-    for VM_ID in "${!VM_CONFIGS[@]}"; do
+    for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
         IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         TIMEOUT=30
@@ -75,7 +75,7 @@ configure() {
 
 delete() {
     echo "🚀 Deleting all VMs..."
-    for VM_ID in "${!VM_CONFIGS[@]}"; do
+    for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
         IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         echo "🚀 Stopping VM: $NAME ($VM_ID)"
@@ -88,7 +88,7 @@ delete() {
 run_script() {
     local script_cmd="${1}"
     echo "🚀 Running script in all VMs..."
-    for VM_ID in "${!VM_CONFIGS[@]}"; do
+    for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
         IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         echo "🚀 Running script in $NAME ($VM_ID)"
@@ -174,8 +174,10 @@ main_menu() {
                 echo "❌ Invalid choice. Please select 1-5."
                 ;;
         esac
-        echo "🔄 Press Enter to return to menu..."
-        read -r </dev/tty
+        if [[ "$choice" != "4" ]]; then
+            echo "🔄 Press Enter to return to menu..."
+            read -r </dev/tty
+        fi
     done
 }
 
