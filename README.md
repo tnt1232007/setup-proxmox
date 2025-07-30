@@ -20,7 +20,7 @@ bash vm-linux-batch.sh
 
 ### EXAMPLE
 ```
-curl -fsSL https://url.trinitro.io/linux-batch-setup | bash
+curl -fsSL https://url.trinitro.io/promox-vm-linux-batch-setup | bash
 
 ======= Proxmox VM Batch Executor ========
 🚀 VM List:

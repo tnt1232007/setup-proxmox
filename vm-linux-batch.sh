@@ -152,7 +152,7 @@ main_menu() {
         echo "4) 📝 Run Script      - Run a custom bash command in all VMs."
         echo "5) 🚪 Exit            - Quit this menu."
         echo "==========================================="
-        read -rp "🤔 Enter your choice [1-5]: " choice
+        read -rp "🤔 Enter your choice [1-5]: " choice </dev/tty
         case $choice in
             1)
                 create
@@ -175,7 +175,7 @@ main_menu() {
                 ;;
         esac
         echo "🔄 Press Enter to return to menu..."
-        read -r
+        read -r </dev/tty
     done
 }
 
@@ -190,7 +190,7 @@ run_script_menu() {
         echo "5) 📝 Custom script           - Enter your own bash command"
         echo "6) 🚪 Exit to main menu"
         echo "========================================="
-        read -rp "🤔 Choose a script to run [1-6]: " script_choice
+        read -rp "🤔 Choose a script to run [1-6]: " script_choice </dev/tty
         case $script_choice in
             1)
                 run_script "curl -fsSL https://url.trinitro.io/linux-setup | bash"
@@ -205,7 +205,7 @@ run_script_menu() {
                 run_script "curl -fsSL https://url.trinitro.io/linux-kernel | bash"
                 ;;
             5)
-                read -rp "📝 Enter your custom bash command: " user_cmd
+                read -rp "📝 Enter your custom bash command: " user_cmd </dev/tty
                 run_script "$user_cmd"
                 ;;
             6)
@@ -216,7 +216,7 @@ run_script_menu() {
                 ;;
         esac
         echo "🔄 Press Enter to return to script menu..."
-        read -r
+        read -r </dev/tty
     done
 }
 
