@@ -61,6 +61,6 @@ setup_cloud_init() {
 download_vm_image
 create_vm
 setup_disk_image
-setup_ssh_keys
+configure_public_keys
 setup_cloud_init
 print_success_message
