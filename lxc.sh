@@ -21,6 +21,7 @@ check_noop
 download_lxc_template
 configure_public_keys
 create_lxc
+mount_points_lxc
 print_success_message
 
 start

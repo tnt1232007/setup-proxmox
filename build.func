@@ -323,6 +323,14 @@ print_success_message() {
     fi
 }
 
+download_lxc_template() {
+    echo "🔧 Checking if LXC template exists..."
+    if ! pveam list "$HOST_ISO_STORAGE" | grep -q "$LXC_TEMPLATE_NAME"; then
+        echo "⬇️ Downloading $LXC_TEMPLATE_NAME..."
+        pveam download "$HOST_ISO_STORAGE" "$LXC_TEMPLATE_NAME"
+    fi
+}
+
 create_lxc() {
     echo "🔧 Creating LXC..."
     pct create $VM_ID $HOST_ISO_STORAGE:vztmpl/$LXC_TEMPLATE_NAME \
@@ -347,10 +355,9 @@ create_lxc() {
     fi
 }
 
-download_lxc_template() {
-    echo "🔧 Checking if LXC template exists..."
-    if ! pveam list "$HOST_ISO_STORAGE" | grep -q "$LXC_TEMPLATE_NAME"; then
-        echo "⬇️ Downloading $LXC_TEMPLATE_NAME..."
-        pveam download "$HOST_ISO_STORAGE" "$LXC_TEMPLATE_NAME"
-    fi
+mount_points_lxc() {
+    echo "🔧 Configuring mount points for LXC..."
+    # Insert mount point after the 'memory:' line in the config file
+    sed -i "/^memory:/a mp1: /mnt/media,mp=/mnt/media" /etc/pve/lxc/$VM_ID.conf
+    sed -i "/^memory:/a mp0: /mnt/external,mp=/mnt/external" /etc/pve/lxc/$VM_ID.conf
 }

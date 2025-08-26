@@ -1,7 +1,7 @@
 # 08 GB RAM = 8192, 12 GB RAM = 12288, 16 GB RAM = 16384, 20 GB RAM = 20480
 declare -A VM_CONFIGS=(
-    [401]="vm-system 80G 8 16384 bc:24:11:01:54:6e 192.168.1.81"
-    [402]="vm-home 60G 8 12288 bc:24:11:75:15:70 192.168.1.82"
+    [401]="vm-system 120G 8 16384 bc:24:11:01:54:6e 192.168.1.81"
+    [402]="vm-home 80G 8 12288 bc:24:11:75:15:70 192.168.1.82"
     [403]="vm-media 80G 8 20480 bc:24:11:9e:2b:07 192.168.1.83"
     [404]="vm-misc 40G 8 12288 bc:24:11:d3:bc:6c 192.168.1.84"
 )
@@ -98,6 +98,7 @@ run_script() {
 }
 
 vm_list() {
+    local -n FSINFO_CACHE_REF=$1
     local RED=$'\033[0;31m'
     local NC=$'\033[0m'
     local -A LIVE_STATUS
@@ -115,7 +116,7 @@ vm_list() {
         LIVE_NAME[$VMID]="$NAME"
     done < <(qm list)
 
-    printf "%-6s %-15s %-10s %-10s %-10s %-18s %-15s\n" "VMID" "Name" "Status" "Memory" "Disk(GB)" "MAC" "IP"
+    printf "%-6s %-15s %-10s %-10s %-10s %-10s %-10s %-18s %-15s\n" "VMID" "Name" "Status" "Memory" "Disk(GB)" "Used(GB)" "Free(%)" "MAC" "IP"
     for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort); do
         IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
         LIVE_STATUS_VAL="${LIVE_STATUS[$VM_ID]:-N/A}"
@@ -134,16 +135,34 @@ vm_list() {
         local plain_disk=$(echo -e "$OUT_DISK" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
         local len_disk=${#plain_disk}
         local pad_disk=$((10 - len_disk))
-        printf "%-6s %-15s %-10s %-10s %s%*s %-18s %-15s\n" \
-            "$VM_ID" "$NAME" "$LIVE_STATUS_VAL" "$OUT_MEM" "$OUT_DISK" "$pad_disk" "" "$MAC" "$IP"
+
+        FSINFO="${FSINFO_CACHE_REF[$VM_ID]}"
+        USED_GB="N/A"
+        FREE_PCT="N/A"
+        if [[ -n "$FSINFO" ]]; then
+            TOTAL_BYTES=$(echo "$FSINFO" | jq -r '.[] | select(.mountpoint == "/") | ."total-bytes"')
+            USED_BYTES=$(echo "$FSINFO" | jq -r '.[] | select(.mountpoint == "/") | ."used-bytes"')
+            if [[ -n "$TOTAL_BYTES" && -n "$USED_BYTES" && "$TOTAL_BYTES" -gt 0 ]]; then
+                USED_GB=$(awk "BEGIN {printf \"%.2f\", $USED_BYTES/1024/1024/1024}")
+                FREE_PCT=$(awk "BEGIN {printf \"%.1f\", 100 - 100*$USED_BYTES/$TOTAL_BYTES}")
+            fi
+        fi
+
+        printf "%-6s %-15s %-10s %-10s %s%*s %-10s %-10s %-18s %-15s\n" \
+            "$VM_ID" "$NAME" "$LIVE_STATUS_VAL" "$OUT_MEM" "$OUT_DISK" "$pad_disk" "" "$USED_GB" "$FREE_PCT" "$MAC" "$IP"
     done
 }
 
 main_menu() {
+    declare -A FSINFO_CACHE
     while true; do
+        # Cache FSINFO for all VMs
+        for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort); do
+            FSINFO_CACHE[$VM_ID]="$(qm agent "$VM_ID" get-fsinfo 2>/dev/null)"
+        done
         echo "======= Proxmox VM Batch Executor ========"
         echo "🚀 VM List:"
-        vm_list
+        vm_list FSINFO_CACHE
         echo "=========================================="
         echo "🤖 Choose an action:"
         echo "1) 🆕 Create VMs      - Clone and set up all VMs from template."
@@ -219,6 +238,27 @@ run_script_menu() {
         esac
         echo "🔄 Press Enter to return to script menu..."
         read -r </dev/tty
+    done
+}
+
+check_disk_size() {
+    for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
+        echo "Checking disk size for VM $VM_ID..."
+        qm agent "$VM_ID" get-fsinfo 2>/dev/null | \
+            grep -E '"mountpoint"|"total-bytes"|"used-bytes"' | \
+            sed 's/[",]//g' | \
+            awk '
+                /mountpoint/ {mp=$3}
+                /total-bytes/ {tb=$3}
+                /used-bytes/ {
+                    ub=$3;
+                    if (mp != "/boot/efi" && tb > 0) {
+                        tgb=tb/1024/1024/1024
+                        ugb=ub/1024/1024/1024
+                        pct=100*ub/tb
+                        printf "%.2f GB / %.2f GB | %.1f%% used\n", ugb, tgb, pct
+                    }
+                }'
     done
 }
 
