@@ -51,12 +51,11 @@ bash vm-linux.sh <ID> [OPTIONS]
 - `--core <cores>`: Number of CPU cores for the VM (optional, default=8).
 - `--ram <memory>`: Amount of RAM for the VM in MB (optional, default=8192).
 - `--disk <size>`: Disk size for the VM (optional, default=80G).
-- `--mac <address>`: MAC address for the VM network interface (optional, default=random).
 - `--noop`: Perform a noop run without making any changes (optional).
 
 ### EXAMPLE
 ```bash
-bash vm-linux.sh 999 --os alpine --ver 3.21 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
+bash vm-linux.sh 999 --os alpine --ver 3.21 --core 4 --ram 4096 --disk 40G --noop
 wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-linux.sh | bash -s -- 999 --os ubuntu
 ```
 
@@ -75,12 +74,11 @@ bash vm-windows.sh <ID> [OPTIONS]
 - `--core <cores>`: Number of CPU cores for the VM (optional, default=8).
 - `--ram <memory>`: Amount of RAM for the VM in MB (optional, default=8192).
 - `--disk <size>`: Disk size for the VM (optional, default=80G).
-- `--mac <address>`: MAC address for the VM network interface (optional, default=random).
 - `--noop`: Perform a noop run without making any changes (optional).
 
 ### EXAMPLE
 ```bash
-bash vm-windows.sh 999 --ver 11 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
+bash vm-windows.sh 999 --ver 11 --core 4 --ram 4096 --disk 40G --noop
 wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-windows.sh | bash -s -- 999
 ```
 
@@ -99,13 +97,12 @@ bash vm-macos.sh <ID> [OPTIONS]
 - `--core <cores>`: Number of CPU cores for the VM (optional, default=8).
 - `--ram <memory>`: Amount of RAM for the VM in MB (optional, default=8192).
 - `--disk <size>`: Disk size for the VM (optional, default=80G).
-- `--mac <address>`: MAC address for the VM network interface (optional, default=random).
 - `--noop`: Perform a noop run without making any changes (optional).
 
 ### EXAMPLE
 ```bash
-bash vm-macos.sh 999 --ver 14 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
-wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-macos.sh | bash -s -- 999
+bash vm-macos.sh 601 --ver 15 --core 8 --ram 8192 --disk 80G --noop
+wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/vm-macos.sh | bash -s -- 601
 ```
 
 ## LXCs - `lxc-pbs.sh` && `lxc-kasm.sh`
@@ -125,11 +122,10 @@ bash lxc-kasm.sh <ID> [OPTIONS]
 - `--core <cores>`: Number of CPU cores for the LXC container (optional, default=4).
 - `--ram <memory>`: Amount of RAM for the LXC container in MB (optional, default=4096).
 - `--disk <size>`: Disk size for the LXC container (optional, default=40G).
-- `--mac <address>`: MAC address for the LXC container network interface (optional, default=random).
 - `--noop`: Perform a noop run without making any changes (optional).
 
 ### EXAMPLE
 ```bash
-bash lxc-pbs.sh 999 --os debian --ver 12 --core 4 --ram 4096 --disk 40G --mac XX:XX:XX:XX:XX --noop
+bash lxc-pbs.sh 999 --os debian --ver 12 --core 4 --ram 4096 --disk 40G --noop
 wget -qO- https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/lxc-kasm.sh | bash -s -- 999 --os ubuntu
 ```

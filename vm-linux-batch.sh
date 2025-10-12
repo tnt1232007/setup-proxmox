@@ -1,3 +1,10 @@
+#!/bin/bash
+if (set -o 2>/dev/null | grep -q pipefail); then
+    set -euo pipefail
+else
+    set -eu
+fi
+
 # 08 GB RAM = 8192, 12 GB RAM = 12288, 16 GB RAM = 16384, 20 GB RAM = 20480
 declare -A VM_CONFIGS=(
     [401]="vm-system 120G 8 16384 bc:24:11:01:54:6e 192.168.1.81"

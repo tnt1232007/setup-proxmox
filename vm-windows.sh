@@ -1,5 +1,9 @@
 #!/bin/bash
-set -euo pipefail
+if (set -o 2>/dev/null | grep -q pipefail); then
+    set -euo pipefail
+else
+    set -eu
+fi
 
 export SCRIPT_NAME="vm-windows.sh"
 if [[ -f "$(dirname "$0")/build.func" ]]; then

@@ -1,5 +1,9 @@
 #!/bin/bash
-set -euo pipefail
+if (set -o 2>/dev/null | grep -q pipefail); then
+    set -euo pipefail
+else
+    set -eu
+fi
 
 export SCRIPT_NAME="vm-macos.sh"
 if [[ -f "$(dirname "$0")/build.func" ]]; then
@@ -67,7 +71,7 @@ setup_compatibility() {
         echo "args: -device isa-applesmc,osk=\"ourhardworkbythesewordsguardedpleasedontsteal(c)AppleComputerInc\" -smbios type=2 -device qemu-xhci -device usb-kbd -device usb-tablet -global nec-usb-xhci.msi=off -global ICH9-LPC.acpi-pci-hotplug-with-bridge-support=off -cpu host,vendor=GenuineIntel,+invtsc,+hypervisor,kvm=on,vmware-cpuid-freq=on" \
             >> "/etc/pve/qemu-server/$VM_ID.conf"
     fi
-    sed -i "s|media=cdrom|cache=unsafe|g" "/etc/pve/qemu-server/$VM_ID.conf"
+    sed -i "s|media=cdrom|media=disk,cache=unsafe|g" "/etc/pve/qemu-server/$VM_ID.conf"
 }
 
 download_vm_image

@@ -15,6 +15,7 @@ configure_host_storage
 configure_vm_settings
 configure_os_settings
 configure_network_settings
+configure_random_password
 review_configurations
 check_noop
 
