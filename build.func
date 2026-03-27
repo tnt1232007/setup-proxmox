@@ -352,6 +352,6 @@ create_lxc() {
 mount_points_lxc() {
     echo "🔧 Configuring mount points for LXC..."
     # Insert mount point after the 'memory:' line in the config file
-    sed -i "/^memory:/a mp1: /mnt/media,mp=/mnt/media" /etc/pve/lxc/$VM_ID.conf
-    sed -i "/^memory:/a mp0: /mnt/external,mp=/mnt/external" /etc/pve/lxc/$VM_ID.conf
+    sed -i "/^memory:/a mp1: /mnt/pve/mnt-media,mp=/mnt/media" /etc/pve/lxc/$VM_ID.conf
+    sed -i "/^memory:/a mp0: /mnt/pve/mnt-external,mp=/mnt/external" /etc/pve/lxc/$VM_ID.conf
 }
