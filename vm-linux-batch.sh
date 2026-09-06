@@ -6,18 +6,21 @@ else
 fi
 
 # 08 GB RAM = 8192, 12 GB RAM = 12288, 16 GB RAM = 16384, 20 GB RAM = 20480
+# MEMORY = --memory ceiling (max), BALLOON = --balloon floor (min, reclaimable down to this)
 declare -A VM_CONFIGS=(
-    [401]="vm-system 120G 8 16384 bc:24:11:01:54:6e 192.168.1.81"
-    [402]="vm-home 80G 8 12288 bc:24:11:75:15:70 192.168.1.82"
-    [403]="vm-media 80G 8 20480 bc:24:11:9e:2b:07 192.168.1.83"
-    [404]="vm-misc 40G 8 12288 bc:24:11:d3:bc:6c 192.168.1.84"
+    # [101]="lxc-core 120G 8 12288 - bc:24:11:09:2a:62 192.168.1.79"
+    # [102]="lxc-gpu 120G 8 12288 - bc:24:11:09:2a:62 192.168.1.78"
+    [401]="vm-system 120G 8 16384 15360 bc:24:11:01:54:6e 192.168.1.81"
+    [402]="vm-home 120G 8 12288 10240 bc:24:11:75:15:70 192.168.1.82"
+    [403]="vm-media 120G 8 20480 18432 bc:24:11:9e:2b:07 192.168.1.83"
+    [404]="vm-misc 120G 8 12288 12288 bc:24:11:d3:bc:6c 192.168.1.84"
 )
 VM_TEMPLATE_ID="400"
 
 create() {
     echo "🚀 Creating VMs from template ID: $VM_TEMPLATE_ID"
     for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
-        IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
+        IFS=" " read -r NAME DISK CORES MEMORY BALLOON MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         echo "🚀 Creating VM: $NAME (ID: $VM_ID)"
         qm clone $VM_TEMPLATE_ID $VM_ID --name "$NAME" --full true
@@ -25,6 +28,7 @@ create() {
 
         qm set $VM_ID --cores "$CORES"
         qm set $VM_ID --memory "$MEMORY"
+        qm set $VM_ID --balloon "$BALLOON"
         qm set $VM_ID --net0 virtio,bridge=vmbr0,macaddr="$MAC"
         qm set $VM_ID --ipconfig0 ip="$IP/24",gw=192.168.1.1
         qm set $VM_ID --onboot 1
@@ -36,7 +40,7 @@ create() {
 configure() {
     echo "🚀 Configuring VMs..."
     for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
-        IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
+        IFS=" " read -r NAME DISK CORES MEMORY BALLOON MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         TIMEOUT=30
         INTERVAL=1
@@ -83,7 +87,7 @@ configure() {
 delete() {
     echo "🚀 Deleting all VMs..."
     for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
-        IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
+        IFS=" " read -r NAME DISK CORES MEMORY BALLOON MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         echo "🚀 Stopping VM: $NAME ($VM_ID)"
         qm stop $VM_ID
@@ -96,7 +100,7 @@ run_script() {
     local script_cmd="${1}"
     echo "🚀 Running script in all VMs..."
     for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort -n); do
-        IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
+        IFS=" " read -r NAME DISK CORES MEMORY BALLOON MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
 
         echo "🚀 Running script in $NAME ($VM_ID)"
         qm guest exec $VM_ID -- bash -c "$script_cmd"
@@ -125,7 +129,7 @@ vm_list() {
 
     printf "%-6s %-15s %-10s %-10s %-10s %-10s %-10s %-18s %-15s\n" "VMID" "Name" "Status" "Memory" "Disk(GB)" "Used(GB)" "Free(%)" "MAC" "IP"
     for VM_ID in $(printf "%s\n" "${!VM_CONFIGS[@]}" | sort); do
-        IFS=" " read -r NAME DISK CORES MEMORY MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
+        IFS=" " read -r NAME DISK CORES MEMORY BALLOON MAC IP <<< "${VM_CONFIGS[$VM_ID]}"
         LIVE_STATUS_VAL="${LIVE_STATUS[$VM_ID]:-N/A}"
         LIVE_MEM_VAL="${LIVE_MEM[$VM_ID]:-N/A}"
         LIVE_DISK_VAL="${LIVE_DISK[$VM_ID]:-N/A}"

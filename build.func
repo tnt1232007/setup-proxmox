@@ -59,6 +59,13 @@ print_help() {
         echo ""
         OS_OPTION=" --os debian"
     fi
+    IP_OPTION=""
+    if [[ "$SCRIPT_NAME" == "lxc.sh" ]]; then
+        echo "  --ip <ip_address>    (required)"
+        echo "      The static IP address for the LXC (e.g. 192.168.1.100)."
+        echo ""
+        IP_OPTION=" --ip 192.168.1.100"
+    fi
     echo "  --ver <os_version>   (optional, default=latest)"
     echo "      The version of the operating system."
     echo ""
@@ -77,8 +84,8 @@ print_help() {
     echo "  --noop               (optional)"
     echo "      Perform a noop run without making any changes."
     echo ""
-    echo "👉 EXAMPLE: bash $SCRIPT_NAME 999$OS_OPTION --ver xx --core 8 --ram 8192 --disk 80 --name my-awesome-vm --noop"
-    echo "👉 EXAMPLE: wget -qLO - https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/$SCRIPT_NAME | bash -s -- 999$OS_OPTION"
+    echo "👉 EXAMPLE: bash $SCRIPT_NAME 999$OS_OPTION$IP_OPTION --ver xx --core 8 --ram 8192 --disk 80 --name my-awesome-vm --noop"
+    echo "👉 EXAMPLE: wget -qLO - https://raw.githubusercontent.com/tnt1232007/setup-proxmox/refs/heads/main/$SCRIPT_NAME | bash -s -- 999$OS_OPTION$IP_OPTION"
     exit 0
 }
 
@@ -100,6 +107,7 @@ parse_input() {
             --ram) VM_MEM="$2"; shift 2 ;;
             --disk) VM_DISK="$2"; shift 2 ;;
             --name) VM_NAME="$2"; shift 2 ;;
+            --ip) VM_IP="$2"; shift 2 ;;
             --noop) NOOP=1; shift ;;
             *) error "Invalid option ${1:-}" ;;
         esac
@@ -259,7 +267,10 @@ configure_network_settings() {
     if [[ $IS_LXC != 1 ]]; then
         VM_NET="${1:-virtio},bridge=vmbr0"
     else
-        VM_NET="name=eth0,bridge=vmbr0"
+        if [[ -z "$VM_IP" ]]; then
+            error "IP(--ip) is required for LXC"
+        fi
+        VM_NET="name=eth0,bridge=vmbr0,ip=$VM_IP/24,gw=192.168.1.1"
     fi
 }
 
@@ -271,6 +282,7 @@ review_configurations() {
     echo "🔧 Review the following configurations:"
     echo "👉 ID: $(highlight "$VM_ID")"
     echo "👉 Name: $(highlight "$VM_NAME")"
+    if [[ -n "${VM_IP:-}" ]]; then echo "👉 IP: $(highlight "$VM_IP")"; fi
     if [[ -n "${VM_PW:-}" ]]; then echo "👉 Password: $VM_PW"; fi
     echo "👉 OS: $(highlight "$OS_NAME-$OS_VERSION")"
     echo "👉 Cores: $(highlight "$VM_CORES")"
@@ -345,7 +357,8 @@ create_lxc() {
         --ssh-public-keys $USER_SSH_TMP_FILE \
         --rootfs $HOST_VM_STORAGE:$VM_DISK \
         --cores $VM_CORES \
-        --memory $VM_MEM
+        --memory $VM_MEM \
+        --features nesting=1
     pct set $VM_ID -net0 $VM_NET
 }
 
